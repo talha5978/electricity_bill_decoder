@@ -24,7 +24,9 @@ export function BillReview({ bill, imageUrl, unverified, onBillChange, onRetake,
   const reconciliation = reconcileBill(bill);
   // The active demo tariff code and its dated source snapshot are not yet verified.
   const hasVerifiedTariffSnapshot = false;
-  const unsupported = !hasVerifiedTariffSnapshot || bill.disco?.toLowerCase().includes("mepco") !== true || !bill.tariffCode || !bill.consumerCategory;
+  const isMepco = bill.disco?.toLowerCase().includes("mepco") === true;
+  const billIdentityIncomplete = !bill.tariffCode || !bill.consumerCategory;
+  const unsupported = !isMepco || billIdentityIncomplete || !hasVerifiedTariffSnapshot;
 
   function setTextField(key: (typeof TEXT_FIELDS)[number][0], value: string) {
     onBillChange({ ...bill, [key]: value.trim() ? value : null });
@@ -56,10 +58,22 @@ export function BillReview({ bill, imageUrl, unverified, onBillChange, onRetake,
 
         <div className="space-y-4">
           <ReconciliationBanner status={reconciliation.status} sumPaisa={reconciliation.sumPaisa} totalPaisa={bill.totalPayablePaisa} differencePaisa={reconciliation.differencePaisa} />
-          {unsupported ? (
+          {!isMepco ? (
             <div className="rounded-xl border border-[#e7d7aa] bg-[#fbf4df] px-4 py-3 text-sm leading-6 text-[#5c4a1c]" role="status">
-              <p className="font-semibold">This tariff isn’t supported yet.</p>
-              <p>We need to verify this bill’s MEPCO residential category and code against a published tariff before showing a calculation.</p>
+              <p className="font-semibold">This app supports MEPCO bills only.</p>
+              <p>Check the electricity company field against the bill. No tariff calculation is available for another company.</p>
+            </div>
+          ) : null}
+          {isMepco && billIdentityIncomplete ? (
+            <div className="rounded-xl border border-[#e7d7aa] bg-[#fbf4df] px-4 py-3 text-sm leading-6 text-[#5c4a1c]" role="status">
+              <p className="font-semibold">We couldn’t confirm the bill’s tariff identity.</p>
+              <p>Check the printed consumer category and tariff code against the photo. The reader must not guess these from the feeder or utility name.</p>
+            </div>
+          ) : null}
+          {isMepco && !billIdentityIncomplete && !hasVerifiedTariffSnapshot ? (
+            <div className="rounded-xl border border-[#e7d7aa] bg-[#fbf4df] px-4 py-3 text-sm leading-6 text-[#5c4a1c]" role="status">
+              <p className="font-semibold">This tariff calculation isn’t available yet.</p>
+              <p>The bill’s category and code are present, but we haven’t verified a dated MEPCO tariff table for this code.</p>
             </div>
           ) : null}
           {unverified ? <p className="rounded-xl bg-[#fbf4df] px-4 py-3 text-sm text-[#5c4a1c]">Unverified: the bill total did not reconcile. Any later tariff insight may be off.</p> : null}
@@ -72,7 +86,7 @@ export function BillReview({ bill, imageUrl, unverified, onBillChange, onRetake,
               <NumberField label="Previous reading" value={bill.previousReading} confidence={bill.confidence.previousReading} onChange={(raw) => setNumberField("previousReading", raw)} />
               <NumberField label="Current reading" value={bill.currentReading} confidence={bill.confidence.currentReading} onChange={(raw) => setNumberField("currentReading", raw)} />
               <NumberField label="Units consumed" value={bill.unitsConsumed} confidence={bill.confidence.unitsConsumed} onChange={(raw) => setNumberField("unitsConsumed", raw)} suffix="units" />
-              <MoneyField label="Total payable" paisa={bill.totalPayablePaisa} confidence={bill.confidence.totalPayablePaisa} onChange={(value) => onBillChange({ ...bill, totalPayablePaisa: value })} />
+              <MoneyField label="Total payable" paisa={bill.totalPayablePaisa} confidence={reconciliation.status === "mismatch" ? "check" : bill.confidence.totalPayablePaisa} onChange={(value) => onBillChange({ ...bill, totalPayablePaisa: value })} />
             </div>
           </div>
 
@@ -84,10 +98,10 @@ export function BillReview({ bill, imageUrl, unverified, onBillChange, onRetake,
             {bill.charges.length ? (
               <div className="space-y-3">
                 {bill.charges.map((charge, index) => (
-                  <div key={charge.id} className={`grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_150px_auto] ${charge.amountPaisa === null ? "border-[#e7d7aa] bg-[#fbf8ed]" : "border-border"}`}>
+                  <div key={charge.id} className={`grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_150px_auto] ${charge.amountPaisa === null || (reconciliation.status === "mismatch" && charge.includedInTotal) ? "border-[#e7d7aa] bg-[#fbf8ed]" : "border-border"}`}>
                     <label className="block text-xs font-medium text-muted-foreground">Charge name
                       <input value={charge.label} onChange={(event) => onBillChange({ ...bill, charges: bill.charges.map((item, i) => i === index ? { ...item, label: event.target.value } : item) })} className="mt-1 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground" aria-label={`Charge ${index + 1} name`} />
-                      {charge.amountPaisa === null || bill.confidence[`charges.${index}`] === "check" ? <span className="mt-1 block text-xs font-semibold text-[#856413]">Check this one</span> : null}
+                      {charge.amountPaisa === null || bill.confidence[`charges.${index}`] === "check" || (reconciliation.status === "mismatch" && charge.includedInTotal) ? <span className="mt-1 block text-xs font-semibold text-[#856413]">Check this one</span> : null}
                     </label>
                     <AmountInput label="Amount (Rs.)" value={charge.amountPaisa} onChange={(amountPaisa) => onBillChange({ ...bill, charges: bill.charges.map((item, i) => i === index ? { ...item, amountPaisa } : item) })} ariaLabel={`${charge.label || `Charge ${index + 1}`} amount in rupees`} />
                     <div className="flex items-end justify-between gap-2 sm:flex-col sm:items-end sm:justify-center">
