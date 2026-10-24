@@ -3,9 +3,11 @@ import { Button } from "./ui/button";
 type BillPreviewProps = {
   imageUrl: string;
   onRetake: () => void;
+  onConfirm: () => void;
+  busy: boolean;
 };
 
-export function BillPreview({ imageUrl, onRetake }: BillPreviewProps) {
+export function BillPreview({ imageUrl, onRetake, onConfirm, busy }: BillPreviewProps) {
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_12px_40px_rgba(35,55,43,0.06)]">
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
@@ -29,11 +31,12 @@ export function BillPreview({ imageUrl, onRetake }: BillPreviewProps) {
       </div>
 
       <div className="space-y-4 px-5 py-5 sm:px-6">
-        <p className="text-sm leading-6 text-muted-foreground">
-          Check that the full bill is readable. You can retake it now. When you
-          choose to read it, the photo will be sent to an AI service for field
-          extraction.
-        </p>
+        <p className="text-sm leading-6 text-muted-foreground">Check that the full bill is readable. You can choose another photo before continuing.</p>
+        <div className="rounded-xl border border-[#d7dfd5] bg-[#f2f6f1] px-4 py-3 text-sm leading-6 text-[#365942]">
+          <p className="font-semibold">Confirming sends this photo to an AI service to read it.</p>
+          <p className="mt-1 text-xs">The photo and extracted fields are not saved by this app.</p>
+        </div>
+        <Button fullWidth onClick={onConfirm} disabled={busy}>Confirm photo and read bill</Button>
         <Button variant="outline" onClick={onRetake} fullWidth>
           Choose a different photo
         </Button>
