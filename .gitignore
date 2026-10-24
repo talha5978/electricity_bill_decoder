@@ -1,0 +1,10 @@
+.DS_Store
+/.env
+/.env.*
+!/.env.example
+/node_modules/
+/devpost/learner-profile.md
+
+# React Router
+/.react-router/
+/build/
